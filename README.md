@@ -139,3 +139,7 @@ If you use Isaac Lab in your research, please cite the technical report:
 
 Isaac Lab development initiated from the [Orbit](https://isaac-orbit.github.io/) framework.
 We gratefully acknowledge the authors of Orbit for their foundational contributions.
+
+
+xx:
+(env_isaaclab) user@server:~/projects/IsaacLab$ python scripts/reinforcement_learning/rsl_rl/train.py --task Isaac-Velocity-Rough-SBT-v0  --max_iterations 500 --headless --seed 1
