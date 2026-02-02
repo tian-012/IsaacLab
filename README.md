@@ -143,3 +143,6 @@ We gratefully acknowledge the authors of Orbit for their foundational contributi
 
 xx:
 (env_isaaclab) user@server:~/projects/IsaacLab$ python scripts/reinforcement_learning/rsl_rl/train.py --task Isaac-Velocity-Rough-SBT-v0  --max_iterations 500 --headless --seed 1
+
+ssh
+(txx_isaaclab) igrape@igrape-SuperSvr-G5208-A:~/xx_repo/repo/IsaacLab$ CUDA_VISIBLE_DEVICES=3 ./isaaclab.sh -p scripts/reinforcement_learning/rsl_rl/train.py --task Isaac-Velocity-Flat-SBT-v0 --max_iterations 2000 --headless

@@ -24,11 +24,11 @@ SBT_12DOF_CFG = ArticulationCfg(
         ),
     ),
     init_state=ArticulationCfg.InitialStateCfg(
-        pos=(0.0, 0.0, 1.0),
+        pos=(0.0, 0.0, 1.03),
         joint_pos={
             ".*_hip_pitch_joint": -0.10,
-            ".*_knee_joint": -0.30,
-            ".*_ankle_pitch_joint": 0.20,
+            ".*_knee_joint": -0.25,
+            ".*_ankle_pitch_joint": 0.17,
         },
         joint_vel={".*": 0.0},
     ),
