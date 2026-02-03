@@ -32,7 +32,7 @@ class SBTFlatEnvCfg(SBTRoughEnvCfg):
         self.rewards.action_rate_l2.weight = -0.005
         
         self.rewards.dof_acc_l2.weight = -5.0e-8  #-1.0e-7
-        self.rewards.feet_air_time.weight = 0.5  #0.75
+        self.rewards.feet_air_time.weight = 0.75  #0.75
         self.rewards.feet_air_time.params["threshold"] = 0.4
         self.rewards.dof_torques_l2.weight = -1.0e-6 # -2.0e-6
         self.rewards.dof_torques_l2.params["asset_cfg"] = SceneEntityCfg(
@@ -42,7 +42,10 @@ class SBTFlatEnvCfg(SBTRoughEnvCfg):
         self.rewards.joint_deviation_hip.weight = -1
         self.rewards.joint_deviation_ankle_roll.weight = -1
         self.rewards.base_height.weight = -20
-
+        self.rewards.stand_still.weight = -0.5
+        self.rewards.flat_orientation_l2.weight = -1.0
+        
+        
         # Commands
         self.commands.base_velocity.ranges.lin_vel_x = (0.0, 1.0)
         self.commands.base_velocity.ranges.lin_vel_y = (0.0, 0.0)

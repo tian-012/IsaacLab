@@ -91,12 +91,16 @@ class Controller:
                            "R_WRIST_P",
                            "R_ELBOW_Y"]
         
-        # joint_names = ['left_hip_roll_joint', 'left_hip_yaw_joint', 'left_hip_pitch_joint', 'left_knee_joint', 'left_ankle_pitch_joint', 'left_ankle_roll_joint',
-        #                'right_hip_roll_joint', 'right_hip_yaw_joint', 'right_hip_pitch_joint', 'right_knee_joint', 'right_ankle_pitch_joint', 'right_ankle_roll_joint']
+        joint_names = ['left_hip_roll_joint', 'left_hip_yaw_joint', 'left_hip_pitch_joint', 'left_knee_joint', 'left_ankle_pitch_joint', 'left_ankle_roll_joint',
+                       'right_hip_roll_joint', 'right_hip_yaw_joint', 'right_hip_pitch_joint', 'right_knee_joint', 'right_ankle_pitch_joint', 'right_ankle_roll_joint']
 
-        joint_names = ['left_hip_roll_joint', 'right_hip_roll_joint', 'left_hip_yaw_joint', 'right_hip_yaw_joint', 'left_hip_pitch_joint', 'right_hip_pitch_joint',
-                       'left_knee_joint', 'right_knee_joint', 'left_ankle_pitch_joint', 'right_ankle_pitch_joint', 'left_ankle_roll_joint', 'right_ankle_roll_joint']
+        # joint_names = ['left_hip_roll_joint', 'right_hip_roll_joint', 'left_hip_yaw_joint', 'right_hip_yaw_joint', 'left_hip_pitch_joint', 'right_hip_pitch_joint',
+        #                'left_knee_joint', 'right_knee_joint', 'left_ankle_pitch_joint', 'right_ankle_pitch_joint', 'left_ankle_roll_joint', 'right_ankle_roll_joint']
 
+        # self.kp = [200, 200, 200, 200, 200, 200, 300, 300, 40, 40, 40, 40]
+        # self.kd = [2.5, 2.5, 2.5, 2.5, 2.5, 2.5, 4, 4, 2, 2, 2, 2]
+        self.kp = [200, 200, 200, 300, 40, 40, 200, 200, 200, 300,40, 40]
+        self.kd = [2.5, 2.5, 2.5, 4, 2, 2, 2.5, 2.5, 2.5, 4, 2, 2]
         self.joint_indices = np.zeros(12, dtype=np.int32)
         for index, joint_name in enumerate(joint_names):
             if index < 12:
@@ -106,14 +110,14 @@ class Controller:
         self.ang_vel_scale = 1.0
         self.dof_pos_scale = 1.0
         self.dof_vel_scale = 1.0
-        self.action_scale = 1.0
+        self.action_scale = 0.5
         self.cmd_scale = np.array([1.0, 1.0, 1.0], dtype=np.float32)
         self.num_actions = 12
-        self.single_num_obs = 48
+        self.single_num_obs = 45
         self.obs_history_len = 1
         self.num_obs = self.obs_history_len * self.single_num_obs
-        self.default_angles = [0.0, 0.0, 0.0, 0.0, -0.10, -0.1,
-                              -0.25, -0.25, 0.17, 0.17, 0.0, 0.0]
+        self.default_angles = [0.0, 0.0, -0.1, -0.25, 0.17, 0.0,
+                               0.0, 0.0, -0.1, -0.25, 0.17, 0.0]
         self.target_dof_pos = np.array(self.default_angles, dtype=np.float32)
         self.n_joints = 12
 
@@ -121,7 +125,7 @@ class Controller:
         self.control_dt = 1 / hz
         self.hz = hz
 
-        self.walk_policy_path = f'/home/speedbot/dev/speedbot-v1_3/deploy/model/zzg/policy_1.pt'
+        self.walk_policy_path = f'/home/speedbot/dev/speedbot-v1_3/deploy/model/txx/policy_1.pt'
         self.walk_policy = torch.jit.load(self.walk_policy_path)
         self.policy = self.walk_policy
 
@@ -239,23 +243,15 @@ class Controller:
         self.gravity_orientation = get_gravity_orientation(self.quat)
         omega_scaled = np.mean(self.omega_history, axis=0) * self.ang_vel_scale
 
-        # period = 0.8
-
-        # count = time.time() - self.walk_control_begin_time
-        # phase = count % period / period
-
-        # sin_phase = np.sin(2 * np.pi * phase)
-        # cos_phase = np.cos(2 * np.pi * phase)
-
         # Create single observation
         single_obs = np.zeros(self.single_num_obs, dtype=np.float32)
         single_obs[:3] = omega_scaled
-        single_obs[3:6] = omega_scaled
-        single_obs[6:9] = self.gravity_orientation
-        single_obs[9:12] = self.cmd * self.cmd_scale
-        single_obs[12: 24] = qj_scaled
-        single_obs[24 + 36] = dqj_scaled
-        single_obs[36 + 48] = self.action
+        single_obs[3:6] = self.gravity_orientation
+        single_obs[6:9] = self.cmd * self.cmd_scale
+        single_obs[9: 9 + self.num_actions] = qj_scaled
+        single_obs[9 + self.num_actions: 9 + 2 * self.num_actions] = dqj_scaled
+        single_obs[9 + 2 * self.num_actions: 9 + 3 * self.num_actions] = self.action
+        # single_obs[9 + 3 * self.num_actions: 9 + 3 * self.num_actions + 2] = np.array([sin_phase, cos_phase])
         return single_obs
 
     def policy_infer(self):
@@ -273,6 +269,18 @@ class Controller:
 
         self.target_dof_pos = self.action * self.action_scale + self.default_angles
         target_dof_pos_pub = np.clip(self.target_dof_pos, -2.3, 2.3)
+
+        tau = (target_dof_pos_pub - self.qj) * self.kp - self.dqj * self.kd
+
+        for j in range(12):
+            self.writer.add_scalars(
+                f'fig/tau_{j}',  # 不包含 '/' 的 tag
+                {
+                    f'tau_pred_{j}': tau[j].item(),
+                    f'tau_real_{j}': self.effort[j].item()
+                },
+                self.policy_count
+            )
         self.control_data_pubisher_call(target_dof_pos_pub)
 
     def record(self):
@@ -347,10 +355,12 @@ if __name__ == "__main__":
             controller.policy_infer()
 
         else:
-            controller.control_data_pubisher_call(np.array(controller.default_angles, dtype=np.float32))
+            init_pos = [0.0, 0.0, -0.1, -0.25, 0.17, 0.0,
+                        0.0, 0.0, -0.1, -0.25, 0.17, 0.0]
+            controller.control_data_pubisher_call(np.array(init_pos, dtype=np.float32))
         controller.policy_count += 1
         controller.control_counter += 1
-        # controller.record()
+        controller.record()
 
         time.sleep(controller.control_dt)
 
